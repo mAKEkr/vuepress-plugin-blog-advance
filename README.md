@@ -1,6 +1,6 @@
 # vuepress-plugin-blog-advance
 
-> Blog plugin for Vuepress based on default blog plugin
+> Blog plugin for Vuepress.
 
 ## Feature
 - Support Blog
