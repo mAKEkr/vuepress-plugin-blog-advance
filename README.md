@@ -2,6 +2,13 @@
 
 > Blog plugin for Vuepress based on default blog plugin
 
+## Feature
+- Support Blog
+- Minor fix on official Blog Plugin.
+  - fix custom layout problem
+  - add `_drafts` folder work(and do not find draft posts on category, tag page) 
+- support Atom Feed
+
 ## Usage
 
 ```javascript
