@@ -40,3 +40,6 @@ set Atom feed file filename. please set extension both.
 - Default: `none`
 
 set default author on posts.
+
+## Future support
+- Support Multi-author blogging(and add author page)
