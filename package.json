@@ -1,0 +1,17 @@
+{
+  "name": "vuepress-plugin-blog-advance",
+  "version": "1.0.0",
+  "description": "blog plugin for vuepress",
+  "main": "index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "documentation",
+    "vue",
+    "vuepress",
+    "generator"
+  ],
+  "author": "mAKEkr <m@ake.kr>",
+  "license": "MIT"
+}
