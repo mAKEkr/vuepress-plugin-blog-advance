@@ -42,9 +42,20 @@ module.exports = (options, ctx) => {
       frontmatter: { layout: getLayout('Layout') }
     },
     {
-      when: ({ regularPath }) => regularPath.startsWith('/_drafts/'),
+      when: ({ regularPath }) => {
+        return regularPath.startsWith('/_drafts/') && process.env.NODE_ENV !== 'production'
+      },
       frontmatter: {
         layout: getLayout('Post', 'Page')
+      },
+      data: { type: 'post-draft' }
+    },
+    {
+      when: ({ regularPath }) => {
+        return regularPath.startsWith('/_drafts/') && process.env.NODE_ENV === 'production'
+      },
+      frontmatter: {
+        layout: getLayout('NotFound')
       },
       data: { type: 'post-draft' }
     },
@@ -210,7 +221,16 @@ module.exports = (options, ctx) => {
 
       const Posts = ctx.pages.filter(page => {
         return page.hasOwnProperty('type') && page.type === 'post'
-      })
+      }).sort((a, b) => {
+        // sort by ASC
+        if (a.frontmatter.date > b.frontmatter.date) {
+          return -1
+        } else if (a.frontmatter.date < b.frontmatter.date) {
+          return 1
+        } else {
+          return 0
+        }
+      }).slice(0, 19)
 
       Fs.writeFileSync(
         Path.resolve(ctx.outDir, 'feed.xml'),
