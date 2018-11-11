@@ -38,6 +38,10 @@ module.exports = (options, ctx) => {
       frontmatter: { layout: getLayout('Tags', 'Page') }
     },
     {
+      when ({ regularPath }) => regularPath.startsWith('/author/'),
+      frontmatter: { layout: getLayout('author', 'Page') }
+    },
+    {
       when: ({ regularPath }) => regularPath === '/',
       frontmatter: { layout: getLayout('Layout') }
     },
@@ -96,6 +100,7 @@ module.exports = (options, ctx) => {
       const { pages } = ctx
       const tagMap = {}
       const categoryMap = {}
+      const authorMap = {}
 
       const curryHandler = (scope, map) => (key, pageKey) => {
         if (key) {
@@ -110,6 +115,7 @@ module.exports = (options, ctx) => {
 
       const handleTag = curryHandler('tag', tagMap)
       const handleCategory = curryHandler('category', categoryMap)
+      const handleAuthor = curryHandler('author', authorMap)
 
       pages.forEach(({
         key,
@@ -118,7 +124,8 @@ module.exports = (options, ctx) => {
           tag,
           tags,
           category,
-          categories
+          categories,
+          author
         }
       }) => {
         if (regularPath.startsWith('/_drafts/')) return false
@@ -135,10 +142,14 @@ module.exports = (options, ctx) => {
         if (Array.isArray(categories)) {
           categories.forEach(category => handleCategory(category, key))
         }
+        if (isString(author)) {
+          handleAuthor(author, key)
+        }
       })
 
       ctx.tagMap = tagMap
       ctx.categoryMap = categoryMap
+      ctx.authormap = authorMap
 
       const extraPages = [
         {
@@ -159,12 +170,17 @@ module.exports = (options, ctx) => {
           meta: { categoryName },
           frontmatter: { title: `${categoryName} | Category` }
         }))
+        ...Object.keys(authorMap).map(authorName => ({
+          permalink: authorMap[authorName].path,
+          meta: { authorName },
+          frontmatter: { title: `${authorName}'s posts` }
+        }))
       ]
       extraPages.forEach(page => ctx.addPage(page))
     },
 
     /**
-     * Generate tag and category metadata.
+     * Generate tag and category and author metadata.
      */
     async clientDynamicModules () {
       return [
@@ -175,6 +191,10 @@ module.exports = (options, ctx) => {
         {
           name: 'category.js',
           content: `export default ${JSON.stringify(ctx.categoryMap, null, 2)}`
+        },
+        {
+          name: 'author.js',
+          content `export default ${JSON.stringify(ctx.authorMap, null, 2)}`
         }
       ]
     },
