@@ -1,6 +1,7 @@
 import { findPageByKey } from '@app/util'
 import tagMeta from '@dynamic/tag'
 import categoryMeta from '@dynamic/category'
+import authorMeta from '@dynamic/author'
 
 class Classifiable {
   constructor (metaMap, pages) {

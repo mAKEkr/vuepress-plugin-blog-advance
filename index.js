@@ -1,15 +1,20 @@
 const {
   path: Path,
   datatypes: { isString },
-  fs: Fs
+  fs: Fs,
+  escapeHtml: EscapeHtml
 } = require('@vuepress/shared-utils')
+const markdownIt = require('markdown-it')()
 
 module.exports = (options, ctx) => {
   const { layoutComponentMap } = ctx
   const {
     pageEnhancers = [],
     categoryIndexPageUrl = '/category/',
-    tagIndexPageUrl = '/tag/'
+    tagIndexPageUrl = '/tag/',
+    postDir = '_posts',
+    feedFileName = 'feed.xml',
+    permalink = '/:year/:month/:day/:slug'
   } = options
 
   const isLayoutExists = name => layoutComponentMap[name] !== undefined
@@ -18,27 +23,23 @@ module.exports = (options, ctx) => {
 
   const enhancers = [
     {
-      when: ({ regularPath }) => isDirectChild(regularPath),
-      data: { type: 'page' }
+      when: ({ regularPath }) => regularPath === categoryIndexPageUrl,
+      frontmatter: { layout: getLayout('Categories', 'Page') }
     },
     {
       when: ({ regularPath }) => regularPath.startsWith('/category/'),
       frontmatter: { layout: getLayout('Category', 'Page') }
     },
     {
-      when: ({ regularPath }) => regularPath === categoryIndexPageUrl,
-      frontmatter: { layout: getLayout('Categories', 'Page') }
+      when: ({ regularPath }) => regularPath === tagIndexPageUrl,
+      frontmatter: { layout: getLayout('Tags', 'Page') }
     },
     {
       when: ({ regularPath }) => regularPath.startsWith('/tag/'),
       frontmatter: { layout: getLayout('Tag', 'Page') }
     },
     {
-      when: ({ regularPath }) => regularPath === tagIndexPageUrl,
-      frontmatter: { layout: getLayout('Tags', 'Page') }
-    },
-    {
-      when ({ regularPath }) => regularPath.startsWith('/author/'),
+      when: ({ regularPath }) => regularPath.startsWith('/author/'),
       frontmatter: { layout: getLayout('author', 'Page') }
     },
     {
@@ -52,26 +53,32 @@ module.exports = (options, ctx) => {
       frontmatter: {
         layout: getLayout('Post', 'Page')
       },
-      data: { type: 'post-draft' }
+      data: { type: 'post' }
     },
     {
       when: ({ regularPath }) => {
         return regularPath.startsWith('/_drafts/') && process.env.NODE_ENV === 'production'
       },
       frontmatter: {
-        layout: getLayout('NotFound')
+        layout: getLayout('NotFound'),
+        permalink: '404.html'
       },
       data: { type: 'post-draft' }
     },
     {
-      when: ({ regularPath }) => regularPath.startsWith('/_posts/'),
+      when: ({ regularPath }) => regularPath.startsWith(`/${postDir}/`),
       frontmatter: {
         layout: getLayout('Post', 'Page'),
-        permalink: '/:year/:month/:day/:slug'
+        permalink: permalink
       },
       data: { type: 'post' }
     },
-    ...pageEnhancers
+    ...pageEnhancers,
+    {
+      when: ({ regularPath }) => isDirectChild(regularPath),
+      frontmatter: { layout: getLayout('page', 'Layout') },
+      data: { type: 'page' }
+    }
   ]
 
   return {
@@ -87,7 +94,11 @@ module.exports = (options, ctx) => {
         frontmatter = {}
       }) => {
         if (when(pageCtx)) {
-          Object.assign(rawFrontmatter, frontmatter)
+          Object.keys(frontmatter).forEach(key => {
+            if (!rawFrontmatter[key]) {
+              rawFrontmatter[key] = rawFrontmatter[key] || frontmatter[key]
+            }
+          })
           Object.assign(pageCtx, data)
         }
       })
@@ -96,7 +107,7 @@ module.exports = (options, ctx) => {
     /**
      * Create tag page and category page.
      */
-    ready () {
+    async ready () {
       const { pages } = ctx
       const tagMap = {}
       const categoryMap = {}
@@ -137,7 +148,7 @@ module.exports = (options, ctx) => {
           tags.forEach(tag => handleTag(tag, key))
         }
         if (isString(category)) {
-          handleCategory(categories, key)
+          handleCategory(category, key)
         }
         if (Array.isArray(categories)) {
           categories.forEach(category => handleCategory(category, key))
@@ -169,14 +180,14 @@ module.exports = (options, ctx) => {
           permalink: categoryMap[categoryName].path,
           meta: { categoryName },
           frontmatter: { title: `${categoryName} | Category` }
-        }))
+        })),
         ...Object.keys(authorMap).map(authorName => ({
           permalink: authorMap[authorName].path,
           meta: { authorName },
           frontmatter: { title: `${authorName}'s posts` }
         }))
       ]
-      extraPages.forEach(page => ctx.addPage(page))
+      await Promise.all(extraPages.map(page => ctx.addPage(page)))
     },
 
     /**
@@ -194,7 +205,7 @@ module.exports = (options, ctx) => {
         },
         {
           name: 'author.js',
-          content `export default ${JSON.stringify(ctx.authorMap, null, 2)}`
+          content: `export default ${JSON.stringify(ctx.authorMap, null, 2)}`
         }
       ]
     },
@@ -204,12 +215,16 @@ module.exports = (options, ctx) => {
 
       const feedTemplate = (data, page) => {
         const makeItems = (post) => {
-          return post.map((page) => {
+          return post.map(page => {
+            const postURL = data.url + page.path
+            const encodedContent = EscapeHtml(markdownIt.render(page._strippedContent)).replace(/\n/g, '')
+
             return `<entry>
-                      <id>${data.url + page.path}</id>
+                      <id>${postURL}</id>
                       <title>${page.title}</title>
+                      <link type="text/html" rel="alternate" href="${postURL}" />
                       <summary>${page.frontmatter.subtitle}</summary>
-                      <link href="${data.url + page.path}" />
+                      <content type="html">${encodedContent}</content>
                       ${makeCategoryList(page.frontmatter.categories)}
                       <updated>${page.frontmatter.date.toISOString()}</updated>
                     </entry>\n`
@@ -217,7 +232,7 @@ module.exports = (options, ctx) => {
         }
 
         const makeCategoryList = (categories) => {
-          return categories.map((item) => {
+          return categories.map(item => {
             return `<category term="${item}" />`
           }).join('')
         }
@@ -253,9 +268,13 @@ module.exports = (options, ctx) => {
       }).slice(0, 19)
 
       Fs.writeFileSync(
-        Path.resolve(ctx.outDir, 'feed.xml'),
+        Path.resolve(ctx.outDir, feedFileName),
         feedTemplate(ctx.siteConfig, Posts)
       )
+
+      if (Fs.existsSync(Path.resolve(ctx.sourceDir, './.blog/'))) {
+        Fs.copy(Path.resolve(ctx.sourceDir, './.blog/'), ctx.outDir)
+      }
     },
 
     enhanceAppFiles: [

@@ -8,12 +8,15 @@
   - fix custom layout problem
   - add `_drafts` folder work(and do not find draft posts on category, tag page) 
 - support Atom Feed
+- support additional file copy on compile process
 
 ## Usage
 
 ```javascript
 module.exports = {
-  plugins: ['vuepress-plugin-blog-advance'] 
+  plugins: ['vuepress-plugin-blog-advance', {
+    options
+  }]
 }
 ```
 
@@ -34,6 +37,11 @@ module.exports = {
 - Type: `string`
 - Default: `/tag/`
 
+### postDir
+
+- Type: `string`
+- Default: `_posts`
+
 ### feedFileName
 
 - Type: `string`
@@ -41,12 +49,9 @@ module.exports = {
 
 set Atom feed file filename. please set extension both.
 
-### author
+### permalink
 
 - Type: `string`
-- Default: `none`
+- Default: `/:year/:month/:day/:slug`
 
-set default author on posts.
-
-## Future support
-- Support Multi-author blogging(and add author page)
+if want find more some information about permalink config, find on [Vuepress official documentation](https://vuepress.vuejs.org/guide/permalinks.html#permalinks-2)

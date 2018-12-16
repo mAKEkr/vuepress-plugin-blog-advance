@@ -1,18 +1,15 @@
 {
   "name": "vuepress-plugin-blog-advance",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "blog plugin for vuepress",
   "main": "index.js",
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/mAKEkr/vuepress-plugin-blog-advance"
-  },
   "keywords": [
     "documentation",
     "vue",
+    "vuepress-plugin",
     "vuepress",
     "generator"
   ],
